@@ -118,4 +118,10 @@ table1(~ age + gender + bmi + liver_diagnosis + recurrence_of_disease +
 
 ################################################################################
 
+# Creating a new column that aggregates the binary flags for each sleep indicator above its clinical threshold, resulting in a total score ranging from 0 to 3. 
+# Note: PSQI was excluded from the aggregation due to a high proportion of missing values (approximately 85 NAs), which would reduce the number of complete cases.
+data_sub <- mutate(data_sub,
+                   Sleep_Score = ESS_thresh + AIS_thresh + BSS_thresh)
+
+View(data_sub)
 
