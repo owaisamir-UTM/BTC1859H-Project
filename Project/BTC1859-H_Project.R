@@ -5,11 +5,12 @@
 
 ################################################################################
 # Initialization: Package installation and data ingestion.
-install.packages(c("janitor", "dplyr", "tidyr", "table1"))
+install.packages(c("janitor", "dplyr", "tidyr", "table1", "ggplot2"))
 library("janitor")
 library("dplyr")
 library("tidyr")
 library("table1")
+library("ggplot2")
 
 # setwd() SET YOUR WORKING DIRECTORY HERE.
 data <- read.csv("project_data.csv")
@@ -109,8 +110,8 @@ table1(~ age + gender + bmi + liver_diagnosis + recurrence_of_disease +
          rejection_graft_dysfunction + any_fibrosis + renal_failure +
          depression + corticoid + sf36_pcs + sf36_mcs |
          Sleep_Scale * Disturbance, 
-       data = data_long,
-       overall = FALSE)
+         data = data_long,
+         overall = FALSE)
 
 ################################################################################
 
@@ -125,7 +126,6 @@ data_sub <- mutate(data_sub,
 
 View(data_sub)
 
-
 ################################################################################
 
 # Relationship between sleep disturbance and quality of life (QoL)
@@ -136,7 +136,7 @@ View(data_sub)
 summary(data_sub$sf36_mcs)       #mental QoL, 21 NAs, mean = 46.22
 hist(data_sub$sf36_mcs)          #slightly right-skewed distribution is seen
 
-summary(data_sub$sf36_pcs)       #mental QoL, 21 NAs, mean = 43.05 
+summary(data_sub$sf36_pcs)       #physical QoL, 21 NAs, mean = 43.05 
 hist(data_sub$sf36_pcs)          #roughly normally distributed
 
 
@@ -151,7 +151,7 @@ lm(sf36_mcs ~ factor(Sleep_Score), data = data_sub)
 lm(sf36_pcs ~ factor(Sleep_Score), data = data_sub)
 
 # Summary:
-# In both cases, linear regression using "Sleep_Score" as categorical showed a strong negative relationship between sleep disturbance and QoLL
+# In both cases, linear regression using "Sleep_Score" as categorical showed a strong negative relationship between sleep disturbance and QoL
 # The effect is roughly linear across all levels of the score, with a 5-6 point drop in physical and mental QoL at each level of "Sleep_Score"
 # This consistent decline suggests linearity and supports treating "Sleep_Score" as a numerical variable for the next analyses
 
@@ -208,12 +208,19 @@ summary(lm_physical)      #intercept =  49.49, p-value < 2e-16
 ## NEED TO COMPLETE STEPS BELOW## 
 
 # Exploring the residuals
-hist(resid(lm_physical))
-hist(resid(lm_mental))
+plot(resid(lm_physical))
+plot(resid(lm_mental))
+
+# Exploring the QQ plot
+qqnorm(resid(lm_physical))
+qqline(resid(lm_physical), col = "red")
+
+qqnorm(resid(lm_mental))
+qqline(resid(lm_mental), col = "red")
 
 # Modelling
-ggplot(data_sub, aes(x = Sleep_Score, y = sf36_pcs)) + geom_jitter() + geom_smooth(method = "lm")
-ggplot(data_sub, aes(x = Sleep_Score, y = sf36_mcs)) + geom_jitter() + geom_smooth(method = "lm")
+ggplot(data_sub, aes(x = Sleep_Score, y = sf36_pcs)) + geom_jitter() + geom_smooth(method = "lm") + labs(x = "Sleep Score", y = "Physical QoL Score")
+ggplot(data_sub, aes(x = Sleep_Score, y = sf36_mcs)) + geom_jitter() + geom_smooth(method = "lm") + labs(x = "Sleep Score", y = "Mental QoL Score")
 
 
 manova_model <- manova(cbind(sf36_pcs, sf36_mcs) ~ Sleep_Score, data = data_sub) 
