@@ -225,3 +225,53 @@ ggplot(data_sub, aes(x = Sleep_Score, y = sf36_mcs)) + geom_jitter() + geom_smoo
 
 manova_model <- manova(cbind(sf36_pcs, sf36_mcs) ~ Sleep_Score, data = data_sub) 
 summary(manova_model, test = "Wilks")
+
+################################################################################
+
+# 2. ESTIMATION OF THE PREVALENCE OF SLEEP DISTURBANCE
+
+################################################################################
+
+head(data_long)
+
+# Find prevalence based on each score using mean() since the values are binary.
+ESS_prevalence <- mean(data_sub$ESS_thresh, na.rm = TRUE)*100
+AIS_prevalence <- mean(data_sub$AIS_thresh, na.rm = TRUE)*100
+BSS_prevalence <- mean(data_sub$BSS_thresh, na.rm = TRUE)*100
+
+# Also, calculated the prevalence by categorizing "Sleep Disturbance"
+# for aggregated sleep scores of >= 2. 
+# The aggregated sleep score sums the scores from ESS, AIS, BSS,
+# providing a comprehensive perspective on sleep disturbance.
+agg_disturbance_prev <- mean(data_sub$Sleep_Score >= 2, na.rm = TRUE) * 100
+
+# Created a separated data frame for plotting the prevalence.
+prev_df <- data.frame(
+  Measure = c("ESS", "AIS", "BSS", "Aggregated Score"),
+  Prevalence = c(ESS_prevalence, AIS_prevalence, BSS_prevalence, agg_disturbance_prev)
+)
+
+# Bar plot showing prevalence based on 3 sleep scores, and the aggregated measure.
+# (PSQI measure was excluded)
+# Added percentage labels for prevalence values above each respective bar.
+ggplot(prev_df, aes(x = Measure, y = Prevalence, fill = Measure)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = paste0(round(Prevalence, 1), "%")),
+            vjust = -0.5, size = 4) +
+  scale_y_continuous(limits = c(0, 100), expand = c(0, 0)) +
+  labs(
+    title = "Prevalence of Sleep Disturbance by Measurement",
+    x = "Sleep Measurement",
+    y = "Prevalence (%)",  
+    caption = str_wrap("Barplot depicting the prevelance of sleep disturbance in
+                       patients with liver transplant based on various sleep
+                       measurements (AIS, BSS, ESS and an aggregated score of
+                       these measurements)", 100)
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0)
+  ) + 
+  scale_fill_brewer(palette = "Pastel1")
