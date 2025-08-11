@@ -362,8 +362,6 @@ summary(manova_model, test = "Wilks")       #Wilks is used most commonly to find
 
 # 2.1a Prevalence estimates of ESS, AIS, BSS -----------------------------------
 
-head(data_long)
-
 # Find prevalence based on each score using mean() since the values are binary.
 # All 1 values (TRUE) indicate that the patient was categorized as sleep disturbed.
 # taking the mean will provide the prevalence in this case.
