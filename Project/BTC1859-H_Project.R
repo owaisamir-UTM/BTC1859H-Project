@@ -1,16 +1,17 @@
 ################################################################################
 
 # BTC1859-H Project (Group 4)
-# Burrak UrRehman, Owais Amir, Shadi Abdul-Sater, Saanika Parkhi, Vianne Cai
+# Burrak Urrehman, Owais Amir, Shadi Abdul-Sater, Saanika Parkhi, Vianne Cai
 
 ################################################################################
 # Initialization: Package installation and data ingestion.
-install.packages(c("janitor", "dplyr", "tidyr", "table1", "ggplot2"))
+install.packages(c("janitor", "dplyr", "tidyr", "table1", "ggplot2", "stringr"))
 library("janitor")
 library("dplyr")
 library("tidyr")
 library("table1")
 library("ggplot2")
+library("stringr")
 
 # setwd() SET YOUR WORKING DIRECTORY HERE.
 data <- read.csv("project_data.csv")
@@ -258,6 +259,7 @@ prev_df <- data.frame(
   Measure = c("ESS", "AIS", "BSS", "Aggregated Score"),
   Prevalence = c(ESS_prevalence, AIS_prevalence, BSS_prevalence, agg_disturbance_prev)
 )
+prev_df
 
 # Bar plot showing prevalence based on 3 sleep scores, and the aggregated measure.
 # (PSQI measure was excluded)
@@ -276,10 +278,83 @@ ggplot(prev_df, aes(x = Measure, y = Prevalence, fill = Measure)) +
                        measurements (AIS, BSS, ESS and an aggregated score of
                        these measurements)", 100)
   ) +
-  theme_minimal(base_size = 12) +
+  theme_bw(base_size = 12) +
   theme(
     legend.position = "none",
         plot.title = element_text(hjust = 0.5),
         plot.caption = element_text(hjust = 0)
   ) + 
   scale_fill_brewer(palette = "Pastel1")
+
+# Creating proportion tables ----------------------------------------------
+
+# Copied data set for proportion tables and plots
+data_prop <- data_sub
+
+# Convert Sleep_Score to a factor for nice labeling in table1
+data_prop$Sleep_Score_F <- factor(
+  data_prop$Sleep_Score,
+  levels = 0:3,
+  labels = c("0: None",
+             "1: Low",
+             "2: Moderate",
+             "3: High")
+)
+
+# Frequency table including NAs
+freq_table <- table(data_prop$Sleep_Score_F, useNA = "ifany")
+
+# Proportion table including NAs
+prop_aggregated_score <- prop.table(freq_table)
+prop_aggregated_score
+
+# Convert binary variables to factors for table1
+data_prop$ESS_thresh <- factor(data_prop$ESS_thresh, levels = c(0, 1), labels = c("No", "Yes"))
+data_prop$AIS_thresh <- factor(data_prop$AIS_thresh, levels = c(0, 1), labels = c("No", "Yes"))
+data_prop$BSS_thresh <- factor(data_prop$BSS_thresh, levels = c(0, 1), labels = c("No", "Yes"))
+
+# Categorized an aggregated sleep score of >= 2 as it highlights those 
+# patients whom were scored as having sleep disturbances
+# on more than 1 sleep measure
+data_prop$Aggregated_Disturbance_F <- factor(data_prop$Sleep_Score >= 2, levels = c(FALSE, TRUE), labels = c("No", "Yes"))
+
+# Label
+label(data_prop$ESS_thresh) <- "ESS:"
+label(data_prop$AIS_thresh) <- "AIS"
+label(data_prop$BSS_thresh) <- "BSS"
+label(data_prop$Sleep_Score_F) <- "Sleep Scores (0-3)"
+label(data_prop$Aggregated_Disturbance_F) <- "Severe Sleep Disturbance (>= 2)"
+
+# Make a prevalence table showing proportion of patients categorized
+# with either sleep disturbance, no disturbance measured, or missing data) 
+table1(~ ESS_thresh + AIS_thresh + BSS_thresh + Sleep_Score_F + Aggregated_Disturbance_F,
+       data = data_prop)
+
+head(data_prop)
+
+# For plotting purposes, removed NA values in the Sleep_Score_F column
+data_clean <- data_prop %>% filter(!is.na(Sleep_Score_F))
+head(data_clean)
+
+# Plot shows proportion of patients based on how many measures scored 
+# them as sleep disturbed (i.e. score of 2 means they were categorized 
+# as having sleep disturbance on two out of the three measures).
+# (n = 249, 19 excluded from total sample of 268 due to missing data)
+ggplot(data_clean, aes(x = Sleep_Score_F, fill = Sleep_Score_F)) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust = -0.5) + 
+  scale_fill_brewer(palette = "Pastel1") +
+  labs(title = "Distribution of Sleep Disturbance Scores",
+       x = "Sleep Disturbance Score",
+       y = "Number of Patients", 
+       caption = str_wrap("Barplot showing number of patients per group depending
+                          on combined sleep disturbance score, none - high.
+                          Total patient sample size is 268, where 19 patients
+                          were excluded due to missing data", 105)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5),
+    plot.caption = element_text(hjust = 0)
+    )
+
