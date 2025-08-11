@@ -16,6 +16,10 @@ library("stringr")
 # setwd() SET YOUR WORKING DIRECTORY HERE.
 data <- read.csv("project_data.csv")
 
+# PSQI will be excluded from our data analysis due to high degree of missingness
+# 85/268 observations are missing ~32% data missingness which is over our cutoff of 30%
+summary(data)
+
 # Subsetting out all column names that will be used for further analysis.
 relevant_cols <- c(
   "Gender",                          
@@ -30,7 +34,6 @@ relevant_cols <- c(
   "Depression",                     
   "Corticoid",                      
   "Epworth.Sleepiness.Scale",       
-  "Pittsburgh.Sleep.Quality.Index.Score",
   "Athens.Insomnia.Scale",          
   "Berlin.Sleepiness.Scale",        
   "SF36.PCS",                       
@@ -38,6 +41,7 @@ relevant_cols <- c(
 
 # Creating a new data frame with the data from the relevant columns only.
 data_sub <- data[, relevant_cols]
+rm("relevant_cols")
 
 ################################################################################
 
@@ -60,12 +64,161 @@ data_sub$corticoid <- factor(data_sub$corticoid, levels = c(0,1), labels = c("No
 str(data_sub)
 summary(data_sub)
 
+# Epworth scale only goes up to 24, so values over that will be treated as NA.
+data_sub$epworth_sleepiness_scale[data_sub$epworth_sleepiness_scale > 24] <- NA
+summary(data_sub)
+
 # Creating new columns that can flag sleep indicator values that are above clinical thresholds.
 data_sub <- mutate(data_sub,
                    ESS_thresh = epworth_sleepiness_scale > 10,
-                   PSQI_thresh = pittsburgh_sleep_quality_index_score > 4,
                    AIS_thresh = athens_insomnia_scale > 5,
                    BSS_thresh = berlin_sleepiness_scale == 1)
+
+
+# Creating a new column that aggregates the binary flags for each sleep indicator
+# above its clinical threshold, resulting in a total score ranging from 0 to 3. 
+data_sub <- mutate(data_sub, Sleep_Score = ESS_thresh + AIS_thresh + BSS_thresh)
+
+################################################################################
+
+# Generating histogram plots to show the distribution of ESS, AIS, and BSS scores
+
+################################################################################
+# ESS Plot
+# I first want to calculate the mean and standard deviation - this lets me create a label to easily place in my plot
+ess_mean <- mean(data_sub$epworth_sleepiness_scale, na.rm = TRUE)
+ess_sd <- sd(data_sub$epworth_sleepiness_scale, na.rm = TRUE)
+ess_label <- paste0("Mean ± SD\n", round(ess_mean, 2), " ± ", round(ess_sd, 2))
+
+ggplot(data_sub, aes(
+  x = epworth_sleepiness_scale,
+  fill = cut(epworth_sleepiness_scale,
+             breaks = c(-Inf, 10, 12, 15, 24),         
+             labels = c("Normal", "Mild Daytime Sleepiness", "Moderate Daytime Sleepiness", "Severe Daytime Sleepiness"),
+             right = TRUE)
+)
+) +
+  geom_bar(color = "black", na.rm = TRUE) +
+  scale_fill_manual(values = c(
+    "Normal" = "darkgreen",
+    "Mild Daytime Sleepiness" = "yellow",
+    "Moderate Daytime Sleepiness" = "orange",
+    "Severe Daytime Sleepiness" = "red"
+  )) +
+  labs(title = "Distribution of ESS Scores",
+       x = "ESS Score",
+       y = "Frequency",
+       fill = "ESS Interpretation") +
+  theme_minimal() +
+  theme(legend.position = "right",
+        plot.title = element_text(hjust = 0.5)) +
+  coord_cartesian(xlim = c(0, 24)) +
+  annotate("label", 
+           x = 24, 
+           y = max(table(data_sub$epworth_sleepiness_scale))/2,
+           label = ess_label,
+           hjust = 1, vjust = 0, size = 4)
+rm("ess_label", "ess_mean", "ess_sd")
+
+# AIS Plot
+# Similar to the ESS plot first calculating mean and standard deviation while creating label
+ais_mean <- mean(data_sub$athens_insomnia_scale, na.rm = TRUE)
+ais_sd <- sd(data_sub$athens_insomnia_scale, na.rm = TRUE)
+ais_label <- paste0("Mean ± SD\n", round(ais_mean, 2), " ± ", round(ais_sd, 2))
+
+ggplot(data_sub, aes(
+  x = athens_insomnia_scale,
+  fill = cut(athens_insomnia_scale,
+             breaks = c(-Inf, 5, 10, 15, 24),
+             labels = c("Normal Sleep", "Mild Insomnia", "Moderate Insomnia", "Severe Insomnia"),
+             right = TRUE)
+)
+) +
+  geom_bar(color = "black", na.rm = TRUE) +
+  scale_fill_manual(values = c(
+    "Normal Sleep" = "darkgreen",
+    "Mild Insomnia" = "yellow",
+    "Moderate Insomnia" = "orange",
+    "Severe Insomnia" = "red"
+  )) +
+  labs(title = "Distribution of AIS Scores",
+       x = "AIS Score",
+       y = "Frequency",
+       fill = "AIS Interpretation") +
+  theme_minimal() +
+  theme(legend.position = "right",
+        plot.title = element_text(hjust = 0.5)) +
+  coord_cartesian(xlim = c(0, 24)) +
+  annotate("label", 
+           x = 24, 
+           y = max(table(data_sub$athens_insomnia_scale))/2,
+           label = ais_label,
+           hjust = 1, vjust = 0, size = 4)
+rm("ais_label", "ais_mean", "ais_sd")
+
+# BSS Plot
+# Start out by filtering the NA values out of the data
+data_bq <- filter(data_sub, !is.na(berlin_sleepiness_scale))
+
+ggplot(data_bq, aes(x = factor(berlin_sleepiness_scale),
+                    fill = factor(berlin_sleepiness_scale))) +
+  geom_bar(color = "black") +
+  geom_text(stat = "count", aes(label = paste0("n = ",after_stat(count))), vjust = -0.5) +
+  scale_x_discrete(labels = c("0" = "Low Risk of Sleep Disordered Breathing", "1" = "High Risk of Sleep Disordered Breathing")) +
+  scale_fill_manual(values = c("0" = "darkgreen", "1" = "red"),
+                    name = "Berlin Sleepiness Scale") +
+  labs(title = "Distribution of BSS Scores",
+       x = "Category",
+       y = "Count") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+
+################################################################################
+
+# Generating histogram plots to show the distribution of QoL scores
+
+################################################################################
+
+# SF36-PCS Plot
+sf36p_mean <- mean(data_sub$sf36_pcs, na.rm = TRUE)
+sf36p_sd <- sd(data_sub$sf36_pcs, na.rm = TRUE)
+sf36p_label <- paste0("Mean ± SD\n", round(sf36p_mean, 2), " ± ", round(sf36p_sd, 2))
+
+ggplot(data_sub, aes(x = as.numeric(sf36_pcs))) +
+  geom_histogram(binwidth = 2, color = "black", na.rm = TRUE, fill ="darkgreen") +
+  labs(title = "Distribution of SF36-PCS Scores",
+       x = "SF36-PCS Score",
+       y = "Frequency") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  coord_cartesian(xlim = c(0, 100)) +
+  annotate("label",
+           x = 100,
+           y = 11,
+           label = sf36p_label,
+           hjust = 1, vjust = 0, size = 4)
+rm("sf36p_label", "sf36p_mean", "sf36p_sd")
+
+721# SF36-MCS Plot
+sf36m_mean <- mean(data_sub$sf36_mcs, na.rm = TRUE)
+sf36m_sd <- sd(data_sub$sf36_mcs, na.rm = TRUE)
+sf36m_label <- paste0("Mean ± SD\n", round(sf36m_mean, 2), " ± ", round(sf36m_sd, 2))
+
+ggplot(data_sub, aes(x = as.numeric(sf36_mcs))) +
+  geom_histogram(binwidth = 2, color = "black", na.rm = TRUE, fill ="darkgreen") +
+  labs(title = "Distribution of SF36-MCS Scores",
+       x = "SF36-MCS Score",
+       y = "Frequency") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  coord_cartesian(xlim = c(0, 100)) +
+  annotate("label",
+           x = 100,
+           y = 11,
+           label = sf36m_label,
+           hjust = 1, vjust = 0, size = 4)
+rm("sf36m_label", "sf36m_mean", "sf36m_sd")
 
 ################################################################################
 
@@ -73,53 +226,24 @@ data_sub <- mutate(data_sub,
 
 ################################################################################
 
-# Reshaping data from wide to long in order to stratify correctly in table1 summary.
-data_long <- pivot_longer(
-  data = data_sub,
-  cols = c(ESS_thresh, PSQI_thresh, AIS_thresh, BSS_thresh),
-  names_to = "Sleep_Scale",
-  values_to = "Disturbance")
-
-# Converting sleep disturbance indicators to labeled factors for stratification by sleep scale.
-data_long$Sleep_Scale <- factor(data_long$Sleep_Scale,
-                                levels = c("ESS_thresh", "PSQI_thresh", "AIS_thresh", "BSS_thresh"),
-                                labels = c("ESS", "PSQI", "AIS", "BSS"))
-
-# This is a work around to allow NA's to work as a factor so that they are included in the table1 summary.
-data_long$Disturbance[is.na(data_long$Disturbance)] <- "No Data"
-data_long$Disturbance <- factor(data_long$Disturbance,
-                                levels = c(FALSE, TRUE, "No Data"),
-                                labels = c("No Disturbance", "Disturbance", "No Data"))
-
 # Adding labels to all of our variables to make it cleaner.
-label(data_long$age) <- "Age"
-label(data_long$gender) <- "Gender"
-label(data_long$bmi) <- "BMI"
-label(data_long$liver_diagnosis) <- "Liver Diagnosis"
-label(data_long$recurrence_of_disease) <- "Reccurence of Disease"
-label(data_long$rejection_graft_dysfunction) <- "Rejection/Graft Dysfunction"
-label(data_long$any_fibrosis) <- "Fibrosis"
-label(data_long$renal_failure) <- "Renal Failure"
-label(data_long$depression) <- "Depression"
-label(data_long$corticoid) <- "Corticosteroid"
-label(data_long$sf36_pcs) <- "SF36 PCS Score"
-label(data_long$sf36_mcs) <- "SF36 MCS Score"
+label(data_sub$age) <- "Age"
+label(data_sub$gender) <- "Gender"
+label(data_sub$bmi) <- "BMI"
+label(data_sub$time_from_transplant) <- "Time Since Transplant (years)"
+label(data_sub$liver_diagnosis) <- "Liver Diagnosis"
+label(data_sub$recurrence_of_disease) <- "Reccurence of Disease"
+label(data_sub$rejection_graft_dysfunction) <- "Rejection/Graft Dysfunction"
+label(data_sub$any_fibrosis) <- "Fibrosis"
+label(data_sub$renal_failure) <- "Renal Failure"
+label(data_sub$depression) <- "Depression"
+label(data_sub$corticoid) <- "Corticosteroid"
+label(data_sub$sf36_pcs) <- "SF36 PCS Score"
+label(data_sub$sf36_mcs) <- "SF36 MCS Score"
 
-# Generating a Table 1 summary of all demographic, clinical, and quality of life indicators,
-# stratified by sleep scale (ESS, PSQI, AIS, BSS) and whether a sleep disturbance was detected.
-table1(~ age + gender + bmi + liver_diagnosis + recurrence_of_disease +
-         rejection_graft_dysfunction + any_fibrosis + renal_failure +
-         depression + corticoid + sf36_pcs + sf36_mcs |
-         Sleep_Scale * Disturbance, 
-         data = data_long,
-         overall = FALSE)
-
-# Creating a new column that aggregates the binary flags for each sleep indicator above its clinical threshold, resulting in a total score ranging from 0 to 3. 
-# Note: PSQI was excluded from the aggregation due to a high proportion of missing values (approximately 85 NAs), which would reduce the number of complete cases.
-data_sub <- mutate(data_sub,
-                   Sleep_Score = ESS_thresh + AIS_thresh + BSS_thresh)
-
-View(data_sub)
+table1(~ age + gender + bmi + time_from_transplant + liver_diagnosis + recurrence_of_disease +
+         rejection_graft_dysfunction + any_fibrosis + renal_failure + depression + corticoid +
+         sf36_pcs + sf36_mcs, data = data_sub)
 
 ################################################################################
 
@@ -180,14 +304,14 @@ cor.test(data_sub$Sleep_Score, data_sub$sf36_pcs, method = "spearman")      #rho
 # Linear regression for "Sleep_Score" and mental QoL
 lm_mental <- lm(sf36_mcs ~ Sleep_Score, data = data_sub)
 summary(lm_mental)      #intercept =  52.53, p-value < 2e-16
-                        #sleep_score = -5.03, p-value = 1.9e-10
-                        #F-score = 44.51, Adjusted R^2 = 0.158
+#sleep_score = -5.03, p-value = 1.9e-10
+#F-score = 44.51, Adjusted R^2 = 0.158
 
 # Linear regression for "Sleep_Score" and physical QoL
 lm_physical <- lm(sf36_pcs ~ Sleep_Score, data = data_sub)
 summary(lm_physical)      #intercept =  49.49, p-value < 2e-16
-                          #sleep_score = -5.17, p-value = 4.1e-11
-                          #F-score = 48.08, Adjusted R^2 = 0.169
+#sleep_score = -5.17, p-value = 4.1e-11
+#F-score = 48.08, Adjusted R^2 = 0.169
 
 # Summary:
 # For the mental QoL model, the intercept (β0 = 52.53, p < 2e-16) represents that for patients with a "Sleep_Score" = 0, their average "sf36_mcs" score is 52.53; the intercept is also statistically significant (as p-value<0.05)
@@ -226,7 +350,7 @@ qqline(resid(lm_mental), col = "red")      #most of the points lie on the refere
 
 manova_model <- manova(cbind(sf36_pcs, sf36_mcs) ~ Sleep_Score, data = data_sub) 
 summary(manova_model, test = "Wilks")       #Wilks is used most commonly to find the variance in the dependent variables NOT explained by the independent variable
-                                            #F = 53.42, Wilks = 0.683, p-value < 2.2e-16
+#F = 53.42, Wilks = 0.683, p-value < 2.2e-16
 
 # Summary: 
 # The MANOVA shows that the "Sleep_Score" has an effect on the combined "sf36_pcs" and "sf36_mcs" scores (F = 53.42)
@@ -241,23 +365,44 @@ summary(manova_model, test = "Wilks")       #Wilks is used most commonly to find
 
 ################################################################################
 
+
+# 2.1a Prevalence estimates of ESS, AIS, BSS -----------------------------------
+
 head(data_long)
 
 # Find prevalence based on each score using mean() since the values are binary.
+# All 1 values (TRUE) indicate that the patient was categorized as sleep disturbed.
+# taking the mean will provide the prevalence in this case.
 ESS_prevalence <- mean(data_sub$ESS_thresh, na.rm = TRUE)*100
 AIS_prevalence <- mean(data_sub$AIS_thresh, na.rm = TRUE)*100
 BSS_prevalence <- mean(data_sub$BSS_thresh, na.rm = TRUE)*100
 
+# Created a function that will take in a sleep score/measure column, 
+# remove NA values and then perform a binomial test to get confidence intervals, 
+# which can then be extracted and put in a dataframe alongside the prevalence.
+get_ci <- function(x) {
+  x <- na.omit(x)
+  binom.test(sum(x), length(x))$conf.int * 100
+}
+
+# Calculate confidence intervals for each
+ESS_ci <- get_ci(data_sub$ESS_thresh)
+AIS_ci <- get_ci(data_sub$AIS_thresh)
+BSS_ci <- get_ci(data_sub$BSS_thresh)
+Agg_ci <- get_ci(data_sub$Sleep_Score >= 1)
+
 # Also, calculated the prevalence by categorizing "Sleep Disturbance"
-# for aggregated sleep scores of >= 2. 
+# for aggregated sleep scores of >=1. 
 # The aggregated sleep score sums the scores from ESS, AIS, BSS,
 # providing a comprehensive perspective on sleep disturbance.
-agg_disturbance_prev <- mean(data_sub$Sleep_Score >= 2, na.rm = TRUE) * 100
+agg_disturbance_prev <- mean(data_sub$Sleep_Score >=1, na.rm = TRUE) * 100
 
 # Created a separated data frame for plotting the prevalence.
 prev_df <- data.frame(
   Measure = c("ESS", "AIS", "BSS", "Aggregated Score"),
-  Prevalence = c(ESS_prevalence, AIS_prevalence, BSS_prevalence, agg_disturbance_prev)
+  Prevalence = c(ESS_prevalence, AIS_prevalence, BSS_prevalence, agg_disturbance_prev),
+  CI_lower = c(ESS_ci[1], AIS_ci[1], BSS_ci[1], Agg_ci[1]),
+  CI_upper = c(ESS_ci[2], AIS_ci[2], BSS_ci[2], Agg_ci[2])
 )
 prev_df
 
@@ -266,8 +411,9 @@ prev_df
 # Added percentage labels for prevalence values above each respective bar.
 ggplot(prev_df, aes(x = Measure, y = Prevalence, fill = Measure)) +
   geom_col(width = 0.6) +
-  geom_text(aes(label = paste0(round(Prevalence, 1), "%")),
-            vjust = -0.5, size = 4) +
+  geom_errorbar(aes(ymin = CI_lower, ymax = CI_upper, width = 0.1), color = "gray40") +
+  geom_text(aes(label = paste0(round(Prevalence, 1), "%"), y = Prevalence / 2),
+            size = 4) +
   scale_y_continuous(limits = c(0, 100), expand = c(0, 0)) +
   labs(
     title = "Prevalence of Sleep Disturbance by Measurement",
@@ -276,17 +422,17 @@ ggplot(prev_df, aes(x = Measure, y = Prevalence, fill = Measure)) +
     caption = str_wrap("Barplot depicting the prevelance of sleep disturbance in
                        patients with liver transplant based on various sleep
                        measurements (AIS, BSS, ESS and an aggregated score of
-                       these measurements)", 100)
+                       these measurements), with 95% confidence interval error bars", 100)
   ) +
   theme_bw(base_size = 12) +
   theme(
     legend.position = "none",
-        plot.title = element_text(hjust = 0.5),
-        plot.caption = element_text(hjust = 0)
+    plot.title = element_text(hjust = 0.5),
+    plot.caption = element_text(hjust = 0)
   ) + 
   scale_fill_brewer(palette = "Pastel1")
 
-# Creating proportion tables ----------------------------------------------
+# 2.1b Creating proportion tables ----------------------------------------------
 
 # Copied data set for proportion tables and plots
 data_prop <- data_sub
@@ -295,10 +441,10 @@ data_prop <- data_sub
 data_prop$Sleep_Score_F <- factor(
   data_prop$Sleep_Score,
   levels = 0:3,
-  labels = c("0: None",
-             "1: Low",
-             "2: Moderate",
-             "3: High")
+  labels = c("0 Measure",
+             "1 Measure",
+             "2 Measures",
+             "3 Measures")
 )
 
 # Frequency table including NAs
@@ -313,22 +459,24 @@ data_prop$ESS_thresh <- factor(data_prop$ESS_thresh, levels = c(0, 1), labels = 
 data_prop$AIS_thresh <- factor(data_prop$AIS_thresh, levels = c(0, 1), labels = c("No", "Yes"))
 data_prop$BSS_thresh <- factor(data_prop$BSS_thresh, levels = c(0, 1), labels = c("No", "Yes"))
 
-# Categorized an aggregated sleep score of >= 2 as it highlights those 
+# Categorized an aggregated sleep score of >=1 as it highlights those 
 # patients whom were scored as having sleep disturbances
 # on more than 1 sleep measure
-data_prop$Aggregated_Disturbance_F <- factor(data_prop$Sleep_Score >= 2, levels = c(FALSE, TRUE), labels = c("No", "Yes"))
+data_prop$Aggregated_Disturbance_F <- factor(data_prop$Sleep_Score >=1, levels = c(FALSE, TRUE), labels = c("No", "Yes"))
 
 # Label
 label(data_prop$ESS_thresh) <- "ESS:"
 label(data_prop$AIS_thresh) <- "AIS"
 label(data_prop$BSS_thresh) <- "BSS"
 label(data_prop$Sleep_Score_F) <- "Sleep Scores (0-3)"
-label(data_prop$Aggregated_Disturbance_F) <- "Severe Sleep Disturbance (>= 2)"
+label(data_prop$Aggregated_Disturbance_F) <- "Severe Sleep Disturbance (>=1)"
 
 # Make a prevalence table showing proportion of patients categorized
 # with either sleep disturbance, no disturbance measured, or missing data) 
 table1(~ ESS_thresh + AIS_thresh + BSS_thresh + Sleep_Score_F + Aggregated_Disturbance_F,
        data = data_prop)
+
+# 2.2 Frequency of Aggregated Score -------------------------------------------
 
 head(data_prop)
 
@@ -348,7 +496,11 @@ ggplot(data_clean, aes(x = Sleep_Score_F, fill = Sleep_Score_F)) +
        x = "Sleep Disturbance Score",
        y = "Number of Patients", 
        caption = str_wrap("Barplot showing number of patients per group depending
-                          on combined sleep disturbance score, none - high.
+                          on combined sleep disturbance score, 0: no sleep distburance
+                          measured on all surveys, 1: only 1 measurement categorized
+                          sleep disturbance in the patient, 2: sleep disturbance scores
+                          on 2 out of 3 surveys, 3: sleep disturbance measured 
+                          on all 3 surveys (ESS, AIS, BSS).
                           Total patient sample size is 268, where 19 patients
                           were excluded due to missing data", 105)) +
   theme_bw(base_size = 12) +
@@ -356,5 +508,5 @@ ggplot(data_clean, aes(x = Sleep_Score_F, fill = Sleep_Score_F)) +
     legend.position = "none",
     plot.title = element_text(hjust = 0.5),
     plot.caption = element_text(hjust = 0)
-    )
+  )
 
