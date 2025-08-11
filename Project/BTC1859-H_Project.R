@@ -50,6 +50,7 @@ rm("relevant_cols")
 ################################################################################
 # Exploring data and cleaning values.
 data_sub <- clean_names(data_sub)
+any(duplicated(data_sub))
 
 # Converting data to factors for readability.
 data_sub$gender <- factor(data_sub$gender, levels = c(1, 2), labels = c("Male", "Female"))
