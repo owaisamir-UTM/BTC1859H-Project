@@ -484,7 +484,7 @@ head(data_clean)
 # (n = 249, 19 excluded from total sample of 268 due to missing data)
 ggplot(data_clean, aes(x = Sleep_Score_F, fill = Sleep_Score_F)) +
   geom_bar() +
-  geom_text(stat='count', aes(label=..count..), vjust = -0.5) + 
+  geom_text(stat='count', aes(label=..count..), vjust = 2) + 
   scale_fill_brewer(palette = "Pastel1") +
   labs(title = "Distribution of Sleep Disturbance Scores",
        x = "Sleep Disturbance Score",
