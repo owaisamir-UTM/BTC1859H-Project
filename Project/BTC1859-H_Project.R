@@ -86,8 +86,8 @@ data_sub <- mutate(data_sub, Sleep_Score = ESS_thresh + AIS_thresh + BSS_thresh)
 ################################################################################
 # ESS Plot
 # I first want to calculate the mean and standard deviation - this lets me create a label to easily place in my plot
-ess_mean <- mean(data_sub$epworth_sleepiness_scale, na.rm = TRUE)
-ess_sd <- sd(data_sub$epworth_sleepiness_scale, na.rm = TRUE)
+ess_mean <- mean(data_sub$epworth_sleepiness_scale, na.rm = TRUE) # Mean of 7.76
+ess_sd <- sd(data_sub$epworth_sleepiness_scale, na.rm = TRUE) # SD of 4.55
 ess_label <- paste0("Mean ± SD\n", round(ess_mean, 2), " ± ", round(ess_sd, 2))
 
 ggplot(data_sub, aes(
@@ -122,8 +122,8 @@ rm("ess_label", "ess_mean", "ess_sd")
 
 # AIS Plot
 # Similar to the ESS plot first calculating mean and standard deviation while creating label
-ais_mean <- mean(data_sub$athens_insomnia_scale, na.rm = TRUE)
-ais_sd <- sd(data_sub$athens_insomnia_scale, na.rm = TRUE)
+ais_mean <- mean(data_sub$athens_insomnia_scale, na.rm = TRUE) # Mean of 7.41
+ais_sd <- sd(data_sub$athens_insomnia_scale, na.rm = TRUE) # SD of 5.33
 ais_label <- paste0("Mean ± SD\n", round(ais_mean, 2), " ± ", round(ais_sd, 2))
 
 ggplot(data_sub, aes(
@@ -174,6 +174,8 @@ ggplot(data_bq, aes(x = factor(berlin_sleepiness_scale),
   theme(plot.title = element_text(hjust = 0.5),
         legend.position = "none")
 
+rm("data_bq")
+
 ################################################################################
 
 # Generating histogram plots to show the distribution of QoL scores
@@ -181,8 +183,8 @@ ggplot(data_bq, aes(x = factor(berlin_sleepiness_scale),
 ################################################################################
 
 # SF36-PCS Plot
-sf36p_mean <- mean(data_sub$sf36_pcs, na.rm = TRUE)
-sf36p_sd <- sd(data_sub$sf36_pcs, na.rm = TRUE)
+sf36p_mean <- mean(data_sub$sf36_pcs, na.rm = TRUE) # Mean of 43.05
+sf36p_sd <- sd(data_sub$sf36_pcs, na.rm = TRUE) # SD of 12.04
 sf36p_label <- paste0("Mean ± SD\n", round(sf36p_mean, 2), " ± ", round(sf36p_sd, 2))
 
 ggplot(data_sub, aes(x = as.numeric(sf36_pcs))) +
@@ -201,8 +203,8 @@ ggplot(data_sub, aes(x = as.numeric(sf36_pcs))) +
 rm("sf36p_label", "sf36p_mean", "sf36p_sd")
 
 # SF36-MCS Plot
-sf36m_mean <- mean(data_sub$sf36_mcs, na.rm = TRUE)
-sf36m_sd <- sd(data_sub$sf36_mcs, na.rm = TRUE)
+sf36m_mean <- mean(data_sub$sf36_mcs, na.rm = TRUE) # Mean of 46.22
+sf36m_sd <- sd(data_sub$sf36_mcs, na.rm = TRUE) # SD of 12.16
 sf36m_label <- paste0("Mean ± SD\n", round(sf36m_mean, 2), " ± ", round(sf36m_sd, 2))
 
 ggplot(data_sub, aes(x = as.numeric(sf36_mcs))) +
@@ -250,14 +252,6 @@ table1(~ age + gender + bmi + time_from_transplant + liver_diagnosis + recurrenc
 # Relationship between sleep disturbance and quality of life (QoL)
 
 ################################################################################
-
-# Summary and distributions of the mental ("sf36_mcs") and physical ("sf36_pcs") quality of life variables are seen
-summary(data_sub$sf36_mcs)       #mental QoL, 21 NAs, mean = 46.22
-hist(data_sub$sf36_mcs)          #slightly right-skewed distribution is seen
-
-summary(data_sub$sf36_pcs)       #physical QoL, 21 NAs, mean = 43.05 
-hist(data_sub$sf36_pcs)          #roughly normally distributed
-
 
 # The relationship between "Sleep_Score" and the physical/mental QoLs is seen where the score is treated as a categorical factor;
 # this was done to determine whether "Sleep_Score" could be treated as a numerical variable in the subsequent models
