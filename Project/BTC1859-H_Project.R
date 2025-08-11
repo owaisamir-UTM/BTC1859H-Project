@@ -109,7 +109,7 @@ ggplot(data_sub, aes(
        x = "ESS Score",
        y = "Frequency",
        fill = "ESS Interpretation") +
-  theme_minimal() +
+  theme_bw() +
   theme(legend.position = "right",
         plot.title = element_text(hjust = 0.5)) +
   coord_cartesian(xlim = c(0, 24)) +
@@ -132,8 +132,8 @@ ggplot(data_sub, aes(
              breaks = c(-Inf, 5, 10, 15, 24),
              labels = c("Normal Sleep", "Mild Insomnia", "Moderate Insomnia", "Severe Insomnia"),
              right = TRUE)
-)
-) +
+  )
+  ) +
   geom_bar(color = "black", na.rm = TRUE) +
   scale_fill_manual(values = c(
     "Normal Sleep" = "darkgreen",
@@ -145,7 +145,7 @@ ggplot(data_sub, aes(
        x = "AIS Score",
        y = "Frequency",
        fill = "AIS Interpretation") +
-  theme_minimal() +
+  theme_bw() +
   theme(legend.position = "right",
         plot.title = element_text(hjust = 0.5)) +
   coord_cartesian(xlim = c(0, 24)) +
@@ -170,7 +170,7 @@ ggplot(data_bq, aes(x = factor(berlin_sleepiness_scale),
   labs(title = "Distribution of BSS Scores",
        x = "Category",
        y = "Count") +
-  theme_minimal(base_size = 12) +
+  theme_bw(base_size = 12) +
   theme(plot.title = element_text(hjust = 0.5),
         legend.position = "none")
 
@@ -192,7 +192,7 @@ ggplot(data_sub, aes(x = as.numeric(sf36_pcs))) +
   labs(title = "Distribution of SF36-PCS Scores",
        x = "SF36-PCS Score",
        y = "Frequency") +
-  theme_minimal() +
+  theme_bw() +
   theme(plot.title = element_text(hjust = 0.5)) +
   coord_cartesian(xlim = c(0, 100)) +
   annotate("label",
@@ -212,7 +212,7 @@ ggplot(data_sub, aes(x = as.numeric(sf36_mcs))) +
   labs(title = "Distribution of SF36-MCS Scores",
        x = "SF36-MCS Score",
        y = "Frequency") +
-  theme_minimal() +
+  theme_bw() +
   theme(plot.title = element_text(hjust = 0.5)) +
   coord_cartesian(xlim = c(0, 100)) +
   annotate("label",
