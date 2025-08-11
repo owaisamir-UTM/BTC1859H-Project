@@ -286,11 +286,41 @@ table1(~ age + gender + bmi + time_from_transplant + liver_diagnosis + recurrenc
 
 ################################################################################
 
-# Relationship between sleep disturbance and quality of life (QoL)
+# 2. Relationship between sleep disturbance and quality of life (QoL)
 
 ################################################################################
 
-# The relationship between "Sleep_Score" and the physical/mental QoLs is seen where the score is treated as a categorical factor;
+## 2.1. Relationship between sleep disturbance scales and QoL
+
+# There are three sleep disturbance scales: "epworth_sleepiness_scale" (ESS), "berlin_sleepiness_scale" (BSS) and "athens_insomnia_scale" (AIS); (note PSQI is not being considered due to high level of missingness)
+# It is necessary to see whether the three scales separately affect the mental  ("sf36_mcs") and physical  ("sf36_pcs") quality of life scores of the patient
+# Independent two-sample t-tests are used to compare mean mental and physical QoL scores between patients above vs. below each clinical threshold for each scale (this test can be used as n > 30 for each scale)
+# Null hypothesis is that mean QoL score (mental or physical) is equal between patients scoring above and below the threshold for each scale; significance level = 0.05
+
+# ESS
+# Comparing mean mental and physical QoL between patients above vs. below ESS_thresh
+t.test(sf36_mcs~ESS_thresh, data=data_sub)    #mean in group FALSE = 48.09, mean in group TRUE = 42.07, p-value = 0.001
+t.test(sf36_pcs~ESS_thresh, data=data_sub)    #mean in group FALSE = 45.30, mean in group TRUE = 37.28, p-value = 1.02e-05
+
+# BSS
+# Comparing mean mental and physical QoL between patients above vs. below BSS_thresh
+t.test(sf36_mcs~BSS_thresh, data=data_sub)    #mean in group FALSE = 47.59, mean in group TRUE = 43.84, p-value = 0.022
+t.test(sf36_pcs~BSS_thresh, data=data_sub)    #mean in group FALSE = 45.53, mean in group TRUE = 39.16, p-value = 8.07e-05
+
+# AIS
+# Comparing mean mental and physical QoL between patients above vs. below AIS_thresh
+t.test(sf36_mcs~AIS_thresh, data=data_sub)    #mean in group FALSE = 52.67, mean in group TRUE = 41.11, p-value = 4.06e-16
+t.test(sf36_pcs~AIS_thresh, data=data_sub)    #mean in group FALSE = 47.32, mean in group TRUE = 39.81, p-value = 4.83e-07
+
+# Summary: 
+# Across all 3 sleep disturbance scales - the Epworth Sleepiness Scale (ESS), Berlin Sleepiness Scale (BSS), and Athens Insomnia Scale (AIS) - patients above the clinical threshold had significantly lower mental and physical QoL scores than those below it
+# AIS had the strongest negative effect with an average drop of 11.56 points in mental QoL and 7.51 points in physical QoL 
+# This indicates that meeting the clinical cutoff for any individual sleep measure, particularly insomnia, relates to significantly poorer mental and physical quality of life outcomes
+
+
+## 2.2. Relationship between Sleep Score and QoL Components
+
+# The relationship between "Sleep_Score" (aggregation of the sleep disturbance scales) and the physical/mental QoLs is seen where the score is treated as a categorical factor;
 # this was done to determine whether "Sleep_Score" could be treated as a numerical variable in the subsequent models
 # It allows the assessment of whether the effect of increasing sleep disturbance on physical and mental QoL is approximately linear
 
@@ -313,15 +343,15 @@ lm(sf36_pcs ~ factor(Sleep_Score), data = data_sub)
 # The null hypothesis for both is the rho=0 (there is no correlation between "Sleep_Score" and the quality of life component)
 
 # Correlation between "Sleep_Score" and mental QoL
-cor.test(data_sub$Sleep_Score, data_sub$sf36_mcs, method = "spearman")      #rho = -0.39, p-value = 6.3e-10
+cor.test(data_sub$Sleep_Score, data_sub$sf36_mcs, method = "spearman")      #rho = -0.39, p-value = 9.08e-10
 
 # Correlation between "Sleep_Score" and physical QoL
-cor.test(data_sub$Sleep_Score, data_sub$sf36_pcs, method = "spearman")      #rho = -0.42, p-value = 2.5e-11
+cor.test(data_sub$Sleep_Score, data_sub$sf36_pcs, method = "spearman")      #rho = -0.42, p-value = 1.47e-11
 
 # Summary:
 # Spearman correlation revealed a moderately, negative association between "Sleep_Score" and both components of QoL
 # At a significance level (alpha value) of 0.05, both of these relationships were significant as the p-value < alpha value and there is evidence to reject the null hypothesis in both cases; 
-# namely, higher sleep scores were significantly associated with a lower mental (rho = -0.39, p < 6.3e-10) and a lower physical (rho = -0.42, p = 2.5e-11) QoL
+# namely, higher sleep scores were significantly associated with a lower mental (rho = -0.39, p = 9.08e-10) and a lower physical (rho = -0.42, p = 1.47e-11) QoL
 # The findings show that as the sleep disturbance score increases, the mental and physical quality of life decreases in liver transplant patients 
 
 
@@ -335,33 +365,44 @@ cor.test(data_sub$Sleep_Score, data_sub$sf36_pcs, method = "spearman")      #rho
 # Linear regression for "Sleep_Score" and mental QoL
 lm_mental <- lm(sf36_mcs ~ Sleep_Score, data = data_sub)
 summary(lm_mental)      #intercept =  52.53, p-value < 2e-16
-                        #sleep_score = -5.03, p-value = 1.9e-10
-                        #F-score = 44.51, Adjusted R^2 = 0.158
+                        #sleep_score = -5.04, p-value = 2.42e-10
+                        #F-score = 43.91, Adjusted R^2 = 0.157
 
 # Linear regression for "Sleep_Score" and physical QoL
 lm_physical <- lm(sf36_pcs ~ Sleep_Score, data = data_sub)
 summary(lm_physical)      #intercept =  49.49, p-value < 2e-16
-                          #sleep_score = -5.17, p-value = 4.1e-11
-                          #F-score = 48.08, Adjusted R^2 = 0.169
+                          #sleep_score = -5.28, p-value = 2.07e-11
+                          #F-score = 49.7, Adjusted R^2 = 0.174
 
 # Summary:
 # For the mental QoL model, the intercept (β0 = 52.53, p < 2e-16) represents that for patients with a "Sleep_Score" = 0, their average "sf36_mcs" score is 52.53; the intercept is also statistically significant (as p-value<0.05)
-# The slope (β1 = -5.03, p = 1.9e-10) indicates that a one-unit increase in "Sleep_Score" is associated with a mean 5.03-point decrease in mental QoL, and that there is evidence to reject the null hypothesis (as p-value < significance level); 
+# The slope (β1 = -5.04, p = 2.42e-10) indicates that a one-unit increase in "Sleep_Score" is associated with a mean 5.04-point decrease in mental QoL, and that there is evidence to reject the null hypothesis (as p-value < significance level); 
 # this means that "Sleep_Score" has a significant relationship with the liver transplant recipient's mental quality of life
-# The adjusted R² = 0.158 shows that the model explains about 15.8% of the variation in mental QoL
+# The adjusted R^2 = 0.157 shows that the model explains about 15.7% of the variation in mental QoL
 #
 # For the physical QoL model, the intercept (β0 = 49.49, p < 2e-16) is also significant and represents the average "sf36_pcs" score when Sleep_Score = 0 
-# The slope (β₁ = -5.17, p = 4.1e-11) suggests a 5.17-point average decrease in physical QoL with every one-unit increase in "Sleep_Score" and that there is evidence to reject the null hypothesis 
+# The slope (β1 = -5.28, p = 2.07e-11) suggests a 5.28-point average decrease in physical QoL with every one-unit increase in "Sleep_Score" and that there is evidence to reject the null hypothesis 
 # this means that "Sleep_Score" has a significant relationship with the liver transplant recipient's physical quality of life
-# The adjusted R² = 0.169 indicates that about 16.9% of the variability in physical QoL can be explained by this model
+# The adjusted R^2 = 0.174 indicates that about 17.4% of the variability in physical QoL can be explained by this model
 
 
 # Evaluating Linear Regression Assumptions 
 
 # The linear regression models are based on a few assumptions, including homoscedasticity (constant variance), normality, and linearity
 # Residuals are being plotted to visually check for any patterns
-plot(resid(lm_physical))    #random scatter, no signs of homoscedasticity or non-linearity
-plot(resid(lm_mental))      #random scatter, no signs of homoscedasticity or non-linearity
+plot(resid(lm_physical), 
+     main = "Residual Plot for Physical Quality of Life Model",      #random scatter, no signs of homoscedasticity or non-linearity
+     xlab = "Observation Index", 
+     ylab = "Residuals", 
+     col = "darkgreen", 
+     pch = 21)    
+
+plot(resid(lm_mental), 
+     main = "Residual Plot for Mental Quality of Life Model",      #random scatter, no signs of homoscedasticity or non-linearity
+     xlab = "Observation Index", 
+     ylab = "Residuals", 
+     col = "darkgreen", 
+     pch = 21)    
 
 # Plotting the Q-Q plot to check for Normality of residuals
 qqnorm(resid(lm_physical))
@@ -371,7 +412,7 @@ qqnorm(resid(lm_mental))
 qqline(resid(lm_mental), col = "red")      #most of the points lie on the reference line in red, however there are slight deviations at the ends; Normality assumption is still assumed to hold true
 
 
-# MANOVA Analysis: "Sleep_Score" on both quality of life components
+# 2.3. Relationship between Sleep Score and Overall QoL
 
 # To look at combined effect, the "sf36_pcs" and "sf36_mcs" scores are NOT combined/aggregated into a global QoL score as the SF-36 tests was designed to measure the two components separately,
 # and studies recommend not doing a global QoL score as it leads to bias and lowers the validity of the study (https://pmc.ncbi.nlm.nih.gov/articles/PMC5052926/, https://pubmed.ncbi.nlm.nih.gov/9817107/)
@@ -381,15 +422,15 @@ qqline(resid(lm_mental), col = "red")      #most of the points lie on the refere
 
 manova_model <- manova(cbind(sf36_pcs, sf36_mcs) ~ Sleep_Score, data = data_sub) 
 summary(manova_model, test = "Wilks")       #Wilks is used most commonly to find the variance in the dependent variables NOT explained by the independent variable
-                                            #F = 53.42, Wilks = 0.683, p-value < 2.2e-16
+                                            #F = 54.07, Wilks = 0.679, p-value < 2.2e-16
 
 # Summary: 
-# The MANOVA shows that the "Sleep_Score" has an effect on the combined "sf36_pcs" and "sf36_mcs" scores (F = 53.42)
-# Wilk's Lambda = 0.683, which indicates that 68.3% variance in the mental and physical QoL scores is not explained by the sleep score; or that 31.7% variance in the two dependent variables IS explained by the "Sleep_Score"
+# The MANOVA shows that the "Sleep_Score" has an effect on the combined "sf36_pcs" and "sf36_mcs" scores (F = 54.07)
+# Wilk's Lambda = 0.679, which indicates that 67.9% variance in the mental and physical QoL scores is not explained by the sleep score; or that 32.1% variance in the two dependent variables IS explained by the "Sleep_Score"
 # As the p-value (< 2.2e-16) is much lesser than the alpha value of 0.05, there is strong evidence to reject the null hypothesis and suggest a significant effect
 # Thus, it shows a significant effect of "Sleep_Score" on combined mental and physical QoL, meaning that overall QoL differs significantly across levels of the sleep scores
 
-
+                   
 ################################################################################
 
 # 2. ESTIMATION OF THE PREVALENCE OF SLEEP DISTURBANCE
