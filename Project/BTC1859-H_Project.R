@@ -502,3 +502,116 @@ ggplot(data_clean, aes(x = Sleep_Score_F, fill = Sleep_Score_F)) +
     plot.caption = element_text(hjust = 0)
   )
 
+################################################################################
+
+# 3. IDENTIFYING PREDICTORS THAT ARE ASSOCIATED WITH SLEEP DISTURBANCE
+
+################################################################################
+
+# Creating a new column that categorizes an aggregated sleep score of >= 1
+# into a binary that identifies individuals as 'Sleep Disturbed' or not
+# as it highlights those patients who were scored as having sleep disturbances on at least 1 sleep measure
+data_sub <- mutate(data_sub, Sleep_Disturbance_flag = ifelse(Sleep_Score >= 1, 1, 0))
+
+# According to the literature, age, gender, BMI, time from transplant, liver
+# diagnosis and depression are all sleep disturbance predictors for liver 
+# transplant patients
+
+# Given that all 3 tests (ESS, BSS, AIS) identify sleep disturbance
+# We will identify predictors based on each individual test, and on our combined
+# Sleep_Disturbance_flag variable
+
+# We will fit 2 models for each case, one with the predictors found in literature
+# and another with all additional predictors. We will compare goodness of fit between
+# each model to determine the best one
+
+#### ESS THRESHOLD ####
+
+ess_mod1 <- glm(ESS_thresh ~ gender + age + bmi + time_from_transplant + liver_diagnosis
+                + depression, data = data_sub, family = binomial)
+nobs(ess_mod1)
+summary(ess_mod1)
+
+ess_mod2 <- glm(ESS_thresh ~ gender + age + bmi + time_from_transplant + liver_diagnosis
+                + depression + recurrence_of_disease + rejection_graft_dysfunction 
+                + any_fibrosis + renal_failure + corticoid, data = data_sub, family = binomial)
+nobs(ess_mod2)
+summary(ess_mod2)
+
+# Larger model is a better fit
+anova(ess_mod2, ess_mod1, test = "Chisq")
+
+#### AIS THRESHOLD ####
+
+ais_mod1 <- glm(AIS_thresh ~ gender + age + bmi + time_from_transplant + liver_diagnosis
+                + depression, data = data_sub, family = binomial)
+nobs(ais_mod1)
+summary(ais_mod1)
+
+ais_mod2 <- glm(AIS_thresh ~ gender + age + bmi + time_from_transplant + liver_diagnosis
+                + depression + recurrence_of_disease + rejection_graft_dysfunction 
+                + any_fibrosis + renal_failure + corticoid, data = data_sub, family = binomial)
+nobs(ais_mod2)
+summary(ais_mod2)
+
+# Larger model is not a better fit
+anova(ais_mod2, ais_mod1, test = "Chisq")
+
+#### BSS THRESHOLD ####
+
+bss_mod1 <- glm(BSS_thresh ~ gender + age + bmi + time_from_transplant + liver_diagnosis
+                + depression, data = data_sub, family = binomial)
+nobs(bss_mod1)
+summary(bss_mod1)
+
+bss_mod2 <- glm(BSS_thresh ~ gender + age + bmi + time_from_transplant + liver_diagnosis
+                + depression + recurrence_of_disease + rejection_graft_dysfunction 
+                + any_fibrosis + renal_failure + corticoid, data = data_sub, family = binomial)
+nobs(bss_mod2)
+summary(bss_mod2)
+
+# Larger model is not a better fit
+anova(bss_mod2, bss_mod1, test = "Chisq")
+
+#### SLEEP DISTURBANCE AGGREGATE ####
+
+# model with the predictors from the literature
+# number of observations = 226 
+# p<226/15; can have 15 predictors
+agg_mod1 <- glm(Sleep_Disturbance_flag ~ gender + age + bmi + time_from_transplant + liver_diagnosis 
+            + depression, data = data_sub, family = binomial)
+nobs(agg_mod1)
+summary(agg_mod1)
+
+# model with recurrence of disease, evidence of rejection/graft dysfunction, 
+# evidence of any fibrosis, renal failure, corticosteroid
+# number of observations = 226 
+# p<226/15; can have 15 predictors
+agg_mod2 <- glm(Sleep_Disturbance_flag ~ gender + age + bmi + time_from_transplant + liver_diagnosis 
+            + depression + recurrence_of_disease + rejection_graft_dysfunction 
+            + any_fibrosis + renal_failure + corticoid, data = data_sub, family = binomial)
+nobs(agg_mod2)
+
+# alpha = 0.05
+# evidence of rejection/graft dysfunction, evidence of any fibrosis, renal failure, 
+# corticosteroid are all p> 0.05
+# BMI has p<0.05 in both models, mod1 had p<0.05 for liver_diagnosisAlcohol as well
+# see which model is a better fit
+summary(agg_mod2)
+
+# likelihood ratio tests
+# Null hypothesis: the larger model (mod2) does not fit the data better compared to the smaller model (mod1)
+# Alternative hypothesis: the larger model (mod2) fits the data better compared to the smaller model (mod1)
+# Alpha = 0.05
+# Results: Model 1 has a deviance of 271.1 while Model 2 has deviance of 262.85.
+# p-value = 0.1429. Since p-value>0.05, we fail to reject the null
+# hypothesis. There is evidence to suggest that the larger model (mod2) does not fit the data better compared to 
+# the smaller model (mod1)
+anova(agg_mod2, agg_mod1, test = "Chisq")
+
+# Likelihood ratio test suggests that agg_mod1 fits the data best
+
+# Identified predictors for sleep disturbance based on the data: BMI, liver_diagnosisAlcohol
+# The obtained value from the chosen model (mod1) 
+# indicates that there is an increase of 0.098511 in the estimate 
+# of the log of odds ratio for the “Sleep Disturbance” outcome, for each unit increase of BMI
