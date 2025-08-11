@@ -50,6 +50,7 @@ rm("relevant_cols")
 ################################################################################
 # Exploring data and cleaning values.
 data_sub <- clean_names(data_sub)
+any(duplicated(data_sub))
 
 # Converting data to factors for readability.
 data_sub$gender <- factor(data_sub$gender, levels = c(1, 2), labels = c("Male", "Female"))
@@ -64,9 +65,29 @@ data_sub$corticoid <- factor(data_sub$corticoid, levels = c(0,1), labels = c("No
 str(data_sub)
 summary(data_sub)
 
-# Epworth scale only goes up to 24, so values over that will be treated as NA.
-data_sub$epworth_sleepiness_scale[data_sub$epworth_sleepiness_scale > 24] <- NA
-summary(data_sub)
+# Checking for allowable values
+# ESS (0–24) 1 value(s) found
+data_sub$epworth_sleepiness_scale[
+  data_sub$epworth_sleepiness_scale < 0 | data_sub$epworth_sleepiness_scale > 24
+] <- NA
+
+# AIS (0–24) 0 value(s) found
+data_sub$athens_insomnia_scale[
+  data_sub$athens_insomnia_scale < 0 | data_sub$athens_insomnia_scale > 24
+] <- NA
+
+# SF-36 (0–100) 0 value(s) found
+data_sub$sf36_pcs[
+  data_sub$sf36_pcs < 0 | data_sub$sf36_pcs > 100
+] <- NA
+data_sub$sf36_mcs[
+  data_sub$sf36_mcs < 0 | data_sub$sf36_mcs > 100
+] <- NA
+
+# BSS (0/1) 0 value(s) found
+data_sub$berlin_sleepiness_scale[
+  !data_sub$berlin_sleepiness_scale %in% c(0,1)
+] <- NA
 
 # Creating new columns that can flag sleep indicator values that are above clinical thresholds.
 data_sub <- mutate(data_sub,
@@ -176,6 +197,22 @@ ggplot(data_bq, aes(x = factor(berlin_sleepiness_scale),
 
 rm("data_bq")
 
+# Table showing valid and missing counts for sleep scales
+sleep_vars <- c("epworth_sleepiness_scale",
+                "athens_insomnia_scale",
+                "berlin_sleepiness_scale")
+
+valids <- sapply(data_sub[sleep_vars], function(x) sum(!is.na(x)))
+missings <- sapply(data_sub[sleep_vars], function(x) sum(is.na(x)))
+
+missing_summary <- data.frame(
+  Valid_Count = valids,
+  Missing_Count = missings
+)
+
+# ESS missing 18; AIS missing 6; BSS missing 6
+missing_summary
+
 ################################################################################
 
 # Generating histogram plots to show the distribution of QoL scores
@@ -245,7 +282,7 @@ label(data_sub$sf36_mcs) <- "SF36 MCS Score"
 
 table1(~ age + gender + bmi + time_from_transplant + liver_diagnosis + recurrence_of_disease +
          rejection_graft_dysfunction + any_fibrosis + renal_failure + depression + corticoid +
-         sf36_pcs + sf36_mcs, data = data_sub)
+         sf36_pcs + sf36_mcs, data = data_sub, caption = "Demographic and Clinical Summary of Baseline Patient Characteristics")
 
 ################################################################################
 
