@@ -411,25 +411,6 @@ qqline(resid(lm_physical), col = "red")    #most of the points lie on the refere
 qqnorm(resid(lm_mental))
 qqline(resid(lm_mental), col = "red")      #most of the points lie on the reference line in red, however there are slight deviations at the ends; Normality assumption is still assumed to hold true
 
-
-# 2.3. Relationship between Sleep Score and Overall QoL
-
-# To look at combined effect, the "sf36_pcs" and "sf36_mcs" scores are NOT combined/aggregated into a global QoL score as the SF-36 tests was designed to measure the two components separately,
-# and studies recommend not doing a global QoL score as it leads to bias and lowers the validity of the study (https://pmc.ncbi.nlm.nih.gov/articles/PMC5052926/, https://pubmed.ncbi.nlm.nih.gov/9817107/)
-# Thus, the effect of "Sleep_Score" on both quality of life measures together is done using "manova()"; 
-# MANOVA is multivariate ANOVA which considers 2+ dependent (continuous) variables together with 1+ independent variable (it also takes into account the correlation between the dependent variables)
-# The null hypothesis is that there is no difference in the means of the dependent variables across the groups 
-
-manova_model <- manova(cbind(sf36_pcs, sf36_mcs) ~ Sleep_Score, data = data_sub) 
-summary(manova_model, test = "Wilks")       #Wilks is used most commonly to find the variance in the dependent variables NOT explained by the independent variable
-                                            #F = 54.07, Wilks = 0.679, p-value < 2.2e-16
-
-# Summary: 
-# The MANOVA shows that the "Sleep_Score" has an effect on the combined "sf36_pcs" and "sf36_mcs" scores (F = 54.07)
-# Wilk's Lambda = 0.679, which indicates that 67.9% variance in the mental and physical QoL scores is not explained by the sleep score; or that 32.1% variance in the two dependent variables IS explained by the "Sleep_Score"
-# As the p-value (< 2.2e-16) is much lesser than the alpha value of 0.05, there is strong evidence to reject the null hypothesis and suggest a significant effect
-# Thus, it shows a significant effect of "Sleep_Score" on combined mental and physical QoL, meaning that overall QoL differs significantly across levels of the sleep scores
-
                    
 ################################################################################
 
