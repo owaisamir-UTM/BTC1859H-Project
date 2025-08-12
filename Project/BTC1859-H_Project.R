@@ -129,7 +129,7 @@ ggplot(data_sub, aes(
   labs(title = "Distribution of ESS Scores",
        x = "ESS Score",
        y = "Frequency",
-       fill = "ESS Interpretation") +
+       fill = "ESS Ranks") +
   theme_bw() +
   theme(legend.position = "right",
         plot.title = element_text(hjust = 0.5)) +
@@ -165,7 +165,7 @@ ggplot(data_sub, aes(
   labs(title = "Distribution of AIS Scores",
        x = "AIS Score",
        y = "Frequency",
-       fill = "AIS Interpretation") +
+       fill = "AIS Ranks") +
   theme_bw() +
   theme(legend.position = "right",
         plot.title = element_text(hjust = 0.5)) +
