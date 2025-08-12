@@ -335,7 +335,54 @@ lm(sf36_pcs ~ factor(Sleep_Score), data = data_sub)
 # The effect is roughly linear across all levels of the score, with a 5-6 point drop in physical and mental QoL at each level of "Sleep_Score"
 # This consistent decline suggests linearity and supports treating "Sleep_Score" as a numerical variable for the next analyses
 
+# Creating boxplots to visualize the relationship between QoL and each sleep disturbance scale
 
+# Mental QoL
+# Preparing data for boxplots comparing Mental QoL (sf36_mcs) across threshold status for each scale
+boxplot_data <- data_sub %>%
+  select(sf36_mcs, ESS_thresh, BSS_thresh, AIS_thresh) %>%       #selecting columns
+  drop_na() %>%     #dropping NAs
+  pivot_longer(cols = c(BSS_thresh, ESS_thresh, AIS_thresh),
+               names_to = "Scale",            # the name of the scale (BSS, AIS, ESS)
+               values_to = "Threshold")       # TRUE = above threshold, FALSE = below threshold
+
+ggplot(boxplot_data, aes(x = Threshold, y = sf36_mcs, fill = factor(Threshold))) +     #creating boxplot with threshold on x-axis, and sf36_mcs score on y-axis
+  geom_boxplot() +
+  scale_fill_manual(values = c("FALSE" = "darkgreen", "TRUE" = "red")) +        
+  labs(
+    title = "Mental QoL by Sleep Disturbance Threshold",
+    x = "Threshold (Below / Above)",
+    y = "SF-36 Mental Component Score"
+  ) + 
+  facet_wrap(~Scale) +     #creating separate sections for each scale
+  theme_minimal()
+
+# Summary: 
+# For all three scales, sf36_mcs median scores are consistently lower when the threshold is met (TRUE) compared to when it is not met (FALSE).                   
+
+# Physical QoL
+# Preparing data for boxplots comparing Physical QoL (sf36_pcs) across threshold status for each scale
+boxplot_data <- data_sub %>%
+  select(sf36_pcs, ESS_thresh, BSS_thresh, AIS_thresh) %>%       #selecting columns
+  drop_na() %>%     #dropping NAs
+  pivot_longer(cols = c(BSS_thresh, ESS_thresh, AIS_thresh),
+               names_to = "Scale",            # the name of the scale (BSS, AIS, ESS)
+               values_to = "Threshold")       # TRUE = above threshold, FALSE = below threshold
+
+ggplot(boxplot_data, aes(x = Threshold, y = sf36_pcs, fill = factor(Threshold))) +     #creating boxplot with threshold on x-axis, and sf36_pcs score on y-axis
+  geom_boxplot() +
+  scale_fill_manual(values = c("FALSE" = "darkgreen", "TRUE" = "red")) +        
+  labs(
+    title = "Physical QoL by Sleep Disturbance Threshold",
+    x = "Threshold (Below / Above)",
+    y = "SF-36 Physical Component Score"
+  ) + 
+  facet_wrap(~Scale) +     #creating separate sections for each scale
+  theme_minimal()
+
+# Summary: 
+# Across all three scales, sf36_pcs median scores are consistently lower when the threshold is met (TRUE) compared to when it is not met (FALSE)                   
+             
 # Correlation Test: Sleep Disturbance & QoL
 
 # First, the 'cor.test()' function will be used to assess the strength and direction of the relationship between "Sleep_Score" and both types of QoL
@@ -368,12 +415,34 @@ summary(lm_mental)      #intercept =  52.53, p-value < 2e-16
                         #sleep_score = -5.04, p-value = 2.42e-10
                         #F-score = 43.91, Adjusted R^2 = 0.157
 
+# Plotting relationship between "Sleep_Score" and mental QoL (with regression line)    
+ggplot(data_sub, aes(x = Sleep_Score, y = sf36_mcs)) +
+  geom_point(color = "darkgreen", alpha = 0.4) +  # scatter points
+  geom_smooth(method = "lm", color = "red", se = FALSE) +  # regression line without confidence interval
+  labs(
+    title = "Relationship Between Sleep Score and Mental QoL",
+    x = "Sleep Disturbance Score",
+    y = "SF-36 Mental Component Score"
+  ) +
+  theme_minimal()
+                   
 # Linear regression for "Sleep_Score" and physical QoL
 lm_physical <- lm(sf36_pcs ~ Sleep_Score, data = data_sub)
 summary(lm_physical)      #intercept =  49.49, p-value < 2e-16
                           #sleep_score = -5.28, p-value = 2.07e-11
                           #F-score = 49.7, Adjusted R^2 = 0.174
 
+# Plotting relationship between "Sleep_Score" and physical QoL (with regression line)
+ggplot(data_sub, aes(x = Sleep_Score, y = sf36_pcs)) +
+  geom_point(color = "darkgreen", alpha = 0.4) +  # scatter points
+  geom_smooth(method = "lm", color = "red", se = FALSE) +  # regression line without CI
+  labs(
+    title = "Relationship Between Sleep Score and Physical QoL",
+    x = "Sleep Disturbance Score",
+    y = "SF-36 Physical Component Score"
+  ) +
+  theme_minimal()
+                   
 # Summary:
 # For the mental QoL model, the intercept (β0 = 52.53, p < 2e-16) represents that for patients with a "Sleep_Score" = 0, their average "sf36_mcs" score is 52.53; the intercept is also statistically significant (as p-value<0.05)
 # The slope (β1 = -5.04, p = 2.42e-10) indicates that a one-unit increase in "Sleep_Score" is associated with a mean 5.04-point decrease in mental QoL, and that there is evidence to reject the null hypothesis (as p-value < significance level); 
@@ -385,7 +454,7 @@ summary(lm_physical)      #intercept =  49.49, p-value < 2e-16
 # this means that "Sleep_Score" has a significant relationship with the liver transplant recipient's physical quality of life
 # The adjusted R^2 = 0.174 indicates that about 17.4% of the variability in physical QoL can be explained by this model
 
-
+                  
 # Evaluating Linear Regression Assumptions 
 
 # The linear regression models are based on a few assumptions, including homoscedasticity (constant variance), normality, and linearity
