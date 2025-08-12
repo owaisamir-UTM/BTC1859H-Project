@@ -425,12 +425,12 @@ qqline(resid(lm_mental), col = "red")      #most of the points lie on the refere
                    
 ################################################################################
 
-# 2. ESTIMATION OF THE PREVALENCE OF SLEEP DISTURBANCE
+# 3. ESTIMATION OF THE PREVALENCE OF SLEEP DISTURBANCE
 
 ################################################################################
 
 
-# 2.1a Prevalence estimates of ESS, AIS, BSS -----------------------------------
+# 3.1a Prevalence estimates of ESS, AIS, BSS -----------------------------------
 
 # Find prevalence based on each score using mean() since the values are binary.
 # All 1 values (TRUE) indicate that the patient was categorized as sleep disturbed.
@@ -475,26 +475,21 @@ ggplot(prev_df, aes(x = Measure, y = Prevalence, fill = Measure)) +
   geom_col(width = 0.6) +
   geom_errorbar(aes(ymin = CI_lower, ymax = CI_upper, width = 0.1), color = "gray40") +
   geom_text(aes(label = paste0(round(Prevalence, 1), "%"), y = Prevalence / 2),
-            size = 4) +
+             size = 4, , color = "white") +
   scale_y_continuous(limits = c(0, 100), expand = c(0, 0)) +
   labs(
     title = "Prevalence of Sleep Disturbance by Measurement",
     x = "Sleep Measurement",
-    y = "Prevalence (%)",  
-    caption = str_wrap("Barplot depicting the prevelance of sleep disturbance in
-                       patients with liver transplant based on various sleep
-                       measurements (AIS, BSS, ESS and an aggregated score of
-                       these measurements), with 95% confidence interval error bars", 100)
-  ) +
+    y = "Prevalence (%)") +
   theme_bw(base_size = 12) +
   theme(
     legend.position = "none",
     plot.title = element_text(hjust = 0.5),
     plot.caption = element_text(hjust = 0)
   ) + 
-  scale_fill_brewer(palette = "Pastel1")
+  scale_fill_brewer(palette = "Set1")
 
-# 2.1b Creating proportion tables ----------------------------------------------
+# 3.1b Creating proportion tables ----------------------------------------------
 
 # Copied data set for proportion tables and plots
 data_prop <- data_sub
@@ -531,14 +526,14 @@ label(data_prop$ESS_thresh) <- "ESS:"
 label(data_prop$AIS_thresh) <- "AIS"
 label(data_prop$BSS_thresh) <- "BSS"
 label(data_prop$Sleep_Score_F) <- "Sleep Scores (0-3)"
-label(data_prop$Aggregated_Disturbance_F) <- "Severe Sleep Disturbance (>=1)"
+label(data_prop$Aggregated_Disturbance_F) <- "Sleep Disturbance (>=1)"
 
 # Make a prevalence table showing proportion of patients categorized
 # with either sleep disturbance, no disturbance measured, or missing data) 
 table1(~ ESS_thresh + AIS_thresh + BSS_thresh + Sleep_Score_F + Aggregated_Disturbance_F,
        data = data_prop)
 
-# 2.2 Frequency of Aggregated Score -------------------------------------------
+# 3.2 Frequency of Aggregated Score -------------------------------------------
 
 head(data_prop)
 
@@ -552,19 +547,11 @@ head(data_clean)
 # (n = 249, 19 excluded from total sample of 268 due to missing data)
 ggplot(data_clean, aes(x = Sleep_Score_F, fill = Sleep_Score_F)) +
   geom_bar() +
-  geom_text(stat='count', aes(label=..count..), vjust = 2) + 
-  scale_fill_brewer(palette = "Pastel1") +
+   geom_text(stat='count', aes(label=..count..), vjust = 2, color = "white") + 
+  scale_fill_brewer(palette = "Set1") +
   labs(title = "Distribution of Sleep Disturbance Scores",
        x = "Sleep Disturbance Score",
-       y = "Number of Patients", 
-       caption = str_wrap("Barplot showing number of patients per group depending
-                          on combined sleep disturbance score, 0: no sleep distburance
-                          measured on all surveys, 1: only 1 measurement categorized
-                          sleep disturbance in the patient, 2: sleep disturbance scores
-                          on 2 out of 3 surveys, 3: sleep disturbance measured 
-                          on all 3 surveys (ESS, AIS, BSS).
-                          Total patient sample size is 268, where 19 patients
-                          were excluded due to missing data", 105)) +
+       y = "Number of Patients") +
   theme_bw(base_size = 12) +
   theme(
     legend.position = "none",
@@ -574,7 +561,7 @@ ggplot(data_clean, aes(x = Sleep_Score_F, fill = Sleep_Score_F)) +
 
 ################################################################################
 
-# 3. IDENTIFYING PREDICTORS THAT ARE ASSOCIATED WITH SLEEP DISTURBANCE
+# 4. IDENTIFYING PREDICTORS THAT ARE ASSOCIATED WITH SLEEP DISTURBANCE
 
 ################################################################################
 
