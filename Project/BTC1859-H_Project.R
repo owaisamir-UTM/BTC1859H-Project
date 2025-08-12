@@ -5,13 +5,19 @@
 
 ################################################################################
 # Initialization: Package installation and data ingestion.
-install.packages(c("janitor", "dplyr", "tidyr", "table1", "ggplot2", "stringr"))
+install.packages(c("janitor", "dplyr", "tidyr", "table1", "ggplot2", "stringr", "styler", "car", "broom", "knitr", "flextable", "officer"))
 library("janitor")
 library("dplyr")
 library("tidyr")
 library("table1")
 library("ggplot2")
 library("stringr")
+library(styler)
+library(car)
+library(broom)
+library(knitr)
+library(flextable)
+library(officer)
 
 # setwd() SET YOUR WORKING DIRECTORY HERE.
 data <- read.csv("project_data.csv")
@@ -99,6 +105,11 @@ data_sub <- mutate(data_sub,
 # Creating a new column that aggregates the binary flags for each sleep indicator
 # above its clinical threshold, resulting in a total score ranging from 0 to 3. 
 data_sub <- mutate(data_sub, Sleep_Score = ESS_thresh + AIS_thresh + BSS_thresh)
+
+# Creating a new column that categorizes an aggregated sleep score of >= 1
+# into a binary that identifies individuals as 'Sleep Disturbed' or not
+# as it highlights those patients who were scored as having sleep disturbances on at least 1 sleep measure
+data_sub <- mutate(data_sub, Sleep_Disturbance_flag = ifelse(Sleep_Score >= 1, 1, 0))
 
 ################################################################################
 
@@ -483,12 +494,12 @@ qqline(resid(lm_mental), col = "red")      #most of the points lie on the refere
                    
 ################################################################################
 
-# 2. ESTIMATION OF THE PREVALENCE OF SLEEP DISTURBANCE
+# 3. ESTIMATION OF THE PREVALENCE OF SLEEP DISTURBANCE
 
 ################################################################################
 
 
-# 2.1a Prevalence estimates of ESS, AIS, BSS -----------------------------------
+# 3.1a Prevalence estimates of ESS, AIS, BSS -----------------------------------
 
 # Find prevalence based on each score using mean() since the values are binary.
 # All 1 values (TRUE) indicate that the patient was categorized as sleep disturbed.
@@ -533,26 +544,21 @@ ggplot(prev_df, aes(x = Measure, y = Prevalence, fill = Measure)) +
   geom_col(width = 0.6) +
   geom_errorbar(aes(ymin = CI_lower, ymax = CI_upper, width = 0.1), color = "gray40") +
   geom_text(aes(label = paste0(round(Prevalence, 1), "%"), y = Prevalence / 2),
-            size = 4) +
+             size = 4, , color = "white") +
   scale_y_continuous(limits = c(0, 100), expand = c(0, 0)) +
   labs(
     title = "Prevalence of Sleep Disturbance by Measurement",
     x = "Sleep Measurement",
-    y = "Prevalence (%)",  
-    caption = str_wrap("Barplot depicting the prevelance of sleep disturbance in
-                       patients with liver transplant based on various sleep
-                       measurements (AIS, BSS, ESS and an aggregated score of
-                       these measurements), with 95% confidence interval error bars", 100)
-  ) +
+    y = "Prevalence (%)") +
   theme_bw(base_size = 12) +
   theme(
     legend.position = "none",
     plot.title = element_text(hjust = 0.5),
     plot.caption = element_text(hjust = 0)
   ) + 
-  scale_fill_brewer(palette = "Pastel1")
+  scale_fill_brewer(palette = "Set1")
 
-# 2.1b Creating proportion tables ----------------------------------------------
+# 3.1b Creating proportion tables ----------------------------------------------
 
 # Copied data set for proportion tables and plots
 data_prop <- data_sub
@@ -589,14 +595,14 @@ label(data_prop$ESS_thresh) <- "ESS:"
 label(data_prop$AIS_thresh) <- "AIS"
 label(data_prop$BSS_thresh) <- "BSS"
 label(data_prop$Sleep_Score_F) <- "Sleep Scores (0-3)"
-label(data_prop$Aggregated_Disturbance_F) <- "Severe Sleep Disturbance (>=1)"
+label(data_prop$Aggregated_Disturbance_F) <- "Sleep Disturbance (>=1)"
 
 # Make a prevalence table showing proportion of patients categorized
 # with either sleep disturbance, no disturbance measured, or missing data) 
 table1(~ ESS_thresh + AIS_thresh + BSS_thresh + Sleep_Score_F + Aggregated_Disturbance_F,
        data = data_prop)
 
-# 2.2 Frequency of Aggregated Score -------------------------------------------
+# 3.2 Frequency of Aggregated Score -------------------------------------------
 
 head(data_prop)
 
@@ -610,19 +616,11 @@ head(data_clean)
 # (n = 249, 19 excluded from total sample of 268 due to missing data)
 ggplot(data_clean, aes(x = Sleep_Score_F, fill = Sleep_Score_F)) +
   geom_bar() +
-  geom_text(stat='count', aes(label=..count..), vjust = 2) + 
-  scale_fill_brewer(palette = "Pastel1") +
+   geom_text(stat='count', aes(label=..count..), vjust = 2, color = "white") + 
+  scale_fill_brewer(palette = "Set1") +
   labs(title = "Distribution of Sleep Disturbance Scores",
        x = "Sleep Disturbance Score",
-       y = "Number of Patients", 
-       caption = str_wrap("Barplot showing number of patients per group depending
-                          on combined sleep disturbance score, 0: no sleep distburance
-                          measured on all surveys, 1: only 1 measurement categorized
-                          sleep disturbance in the patient, 2: sleep disturbance scores
-                          on 2 out of 3 surveys, 3: sleep disturbance measured 
-                          on all 3 surveys (ESS, AIS, BSS).
-                          Total patient sample size is 268, where 19 patients
-                          were excluded due to missing data", 105)) +
+       y = "Number of Patients") +
   theme_bw(base_size = 12) +
   theme(
     legend.position = "none",
@@ -632,114 +630,221 @@ ggplot(data_clean, aes(x = Sleep_Score_F, fill = Sleep_Score_F)) +
 
 ################################################################################
 
-# 3. IDENTIFYING PREDICTORS THAT ARE ASSOCIATED WITH SLEEP DISTURBANCE
+# 4. IDENTIFYING PREDICTORS THAT ARE ASSOCIATED WITH SLEEP DISTURBANCE
 
 ################################################################################
 
-# Creating a new column that categorizes an aggregated sleep score of >= 1
-# into a binary that identifies individuals as 'Sleep Disturbed' or not
-# as it highlights those patients who were scored as having sleep disturbances on at least 1 sleep measure
-data_sub <- mutate(data_sub, Sleep_Disturbance_flag = ifelse(Sleep_Score >= 1, 1, 0))
+# Function for putting confidence intervals into a single, pastable string
+# rather than a matrix
+conf_ints <- function(confidence_interval, terms) {
+  paste0(
+    "[",
+    round(confidence_interval[terms, 1], 3), ", ",
+    round(confidence_interval[terms, 2], 3),
+    "]"
+  )
+}
+
+# Function that we can pass our models through in order to make results tables
+results_table <- function(model, title) {
+  results <- tidy(model, conf.int = TRUE) %>%
+    dplyr::select(term, estimate, p.value) %>%
+    mutate(
+      coef_confint = conf_ints(confint(model), term),
+      OR = exp(estimate),
+      OR_conf = conf_ints(exp(confint(model)), term),
+    ) %>%
+    rename(
+      Predictor = term,
+      Coefficient = estimate,
+      "Coef. CI" = coef_confint,
+      "p-value" = p.value,
+      OR = OR,
+      "OR CI" = OR_conf
+    ) %>%
+    mutate(
+      Coefficient = round(Coefficient, 3),
+      OR = round(OR, 3),
+      "p-value" = signif(`p-value`, 3)
+    )
+
+  # flextable is a function of the flextable package which allows
+  # us to make tables that are more compatible with Microsoft Word
+  # Tables are formatted so that p-values below our 0.05 threshold are highlighted in
+  # light blue.
+  ft <- flextable(results) %>%
+    bg(j = "p-value", bg = ifelse(results$`p-value` < 0.05, "lightblue", "white")) %>%
+    set_caption(caption = title)
+
+  ft <- ft %>% autofit()
+
+  ft
+}
 
 # According to the literature, age, gender, BMI, time from transplant, liver
-# diagnosis and depression are all sleep disturbance predictors for liver 
+# diagnosis and depression are all sleep disturbance predictors for liver
 # transplant patients
+
+# Additional predictors in our dataset include recurrence of disease, evidence of rejection/graft dysfunction,
+# evidence of any fibrosis, renal failure, and corticosteroid use
 
 # Given that all 3 tests (ESS, BSS, AIS) identify sleep disturbance
 # We will identify predictors based on each individual test, and on our combined
 # Sleep_Disturbance_flag variable
 
 # We will fit 2 models for each case, one with the predictors found in literature
-# and another with all additional predictors. We will compare goodness of fit between
-# each model to determine the best one
+# and another with all additional predictors in our dataset. We will compare goodness of fit between
+# each model to determine the best one. Statistically significant predictors from the best fit
+# model will be selected.
+
+#### LOGISTIC REGRESSION ####
+# Null hypothesis (per predictor): When controlling for all other variables,
+# the coefficient of each individual predictor has no effect (β1 = 0) on the odds of having sleep disturbance.
+# Alternative hypothesis: When controlling for all other variables,
+# the coefficient of each individual predictor has some effect (β1 ≠ 0) on the odds of having sleep disturbance.
+# Alpha = 0.05
+
+#### LIKELIHOOD RATIO TESTS ####
+# Null hypothesis: the larger model does not fit the data better compared to the smaller model
+# Alternative hypothesis: the larger model fits the data better compared to the smaller model
+# Alpha = 0.05
 
 #### ESS THRESHOLD ####
 
+# Model fit with predictors identified in the literature
 ess_mod1 <- glm(ESS_thresh ~ gender + age + bmi + time_from_transplant + liver_diagnosis
-                + depression, data = data_sub, family = binomial)
+  + depression, data = data_sub, family = binomial)
 nobs(ess_mod1)
 summary(ess_mod1)
 
+# Results show liver_diagnosisPSC/PBC/AHA as the only statistically significant predictor
+# in this model (p < 0.05)
+results_table(ess_mod1, "ESS Logistic Regression - Model 1")
+
+# Model fit with predictors identified in the literature + additional predictors
 ess_mod2 <- glm(ESS_thresh ~ gender + age + bmi + time_from_transplant + liver_diagnosis
-                + depression + recurrence_of_disease + rejection_graft_dysfunction 
-                + any_fibrosis + renal_failure + corticoid, data = data_sub, family = binomial)
+  + depression + recurrence_of_disease + rejection_graft_dysfunction
+  + any_fibrosis + renal_failure + corticoid, data = data_sub, family = binomial)
 nobs(ess_mod2)
 summary(ess_mod2)
 
-# Larger model is a better fit
+# Results show liver_diagnosisPSC/PBC/AHA and corticoidYes as statistically significant predictors
+# in this model (p < 0.05)
+results_table(ess_mod2, "ESS Logistic Regression - Model 2")
+
+# Likelihood Ratio Test and AIC both point to ess_mod2 (the larger model) as the better fit
 anova(ess_mod2, ess_mod1, test = "Chisq")
+AIC(ess_mod1)
+AIC(ess_mod2)
+
+# Calculating Variance Inflation Factor to examine collinearity
+# All adjusted GVIF values <2, no concern of multicollinearity in this model
+# suggests model stability
+vif(ess_mod2)
+
+# Based on these results, identified predictors for ESS_thresh: liver_diagnosisPSC/PBC/AHA and corticoidYes
 
 #### AIS THRESHOLD ####
 
+# Model fit with predictors identified in the literature
 ais_mod1 <- glm(AIS_thresh ~ gender + age + bmi + time_from_transplant + liver_diagnosis
-                + depression, data = data_sub, family = binomial)
+  + depression, data = data_sub, family = binomial)
 nobs(ais_mod1)
 summary(ais_mod1)
 
+# Results show liver_diagnosisAlcohol and depressionYes as statistically significant predictors
+# in this model (p < 0.05)
+results_table(ais_mod1, "AIS Logistic Regression - Model 1")
+
+# Model fit with predictors identified in the literature + additional predictors
 ais_mod2 <- glm(AIS_thresh ~ gender + age + bmi + time_from_transplant + liver_diagnosis
-                + depression + recurrence_of_disease + rejection_graft_dysfunction 
-                + any_fibrosis + renal_failure + corticoid, data = data_sub, family = binomial)
+  + depression + recurrence_of_disease + rejection_graft_dysfunction
+  + any_fibrosis + renal_failure + corticoid, data = data_sub, family = binomial)
 nobs(ais_mod2)
 summary(ais_mod2)
 
-# Larger model is not a better fit
+# Results show depressionYes as the only statistically significant predictor
+# in this model (p < 0.05)
+results_table(ais_mod2, "AIS Logistic Regression - Model 2")
+
+# Likelihood Ratio Test and AIC both point to ais_mod1 (the smaller model) as the better fit
 anova(ais_mod2, ais_mod1, test = "Chisq")
+AIC(ais_mod1)
+AIC(ais_mod2)
+
+# All adjusted GVIF values <2, no concern of multicollinearity in this model
+# suggests model stability
+vif(ais_mod1)
+
+# Based on these results, identified predictors for ESS_thresh: liver_diagnosisAlcohol and depressionYes
 
 #### BSS THRESHOLD ####
 
+# Model fit with predictors identified in the literature
 bss_mod1 <- glm(BSS_thresh ~ gender + age + bmi + time_from_transplant + liver_diagnosis
-                + depression, data = data_sub, family = binomial)
+  + depression, data = data_sub, family = binomial)
 nobs(bss_mod1)
 summary(bss_mod1)
 
+# Results show bmi as the only statistically significant predictor
+# in this model (p < 0.05)
+results_table(bss_mod1, "BSS Logistic Regression - Model 1")
+
+# Model fit with predictors identified in the literature + additional predictors
 bss_mod2 <- glm(BSS_thresh ~ gender + age + bmi + time_from_transplant + liver_diagnosis
-                + depression + recurrence_of_disease + rejection_graft_dysfunction 
-                + any_fibrosis + renal_failure + corticoid, data = data_sub, family = binomial)
+  + depression + recurrence_of_disease + rejection_graft_dysfunction
+  + any_fibrosis + renal_failure + corticoid, data = data_sub, family = binomial)
 nobs(bss_mod2)
 summary(bss_mod2)
 
-# Larger model is not a better fit
+# Results show bmi as the only statistically significant predictor
+# in this model (p < 0.05)
+results_table(bss_mod2, "BSS Logistic Regression - Model 2")
+
+# Likelihood Ratio Test and AIC both point to bss_mod1 (the smaller model) as the better fit
 anova(bss_mod2, bss_mod1, test = "Chisq")
+AIC(bss_mod1)
+AIC(bss_mod2)
+
+# All adjusted GVIF values <2, no concern of multicollinearity in this model
+# suggests model stability
+vif(bss_mod1)
+
+# Based on these results, identified predictors for BSS_thresh: bmi
 
 #### SLEEP DISTURBANCE AGGREGATE ####
 
-# model with the predictors from the literature
-# number of observations = 226 
-# p<226/15; can have 15 predictors
-agg_mod1 <- glm(Sleep_Disturbance_flag ~ gender + age + bmi + time_from_transplant + liver_diagnosis 
-            + depression, data = data_sub, family = binomial)
+# Model with the predictors from the literature
+agg_mod1 <- glm(Sleep_Disturbance_flag ~ gender + age + bmi + time_from_transplant + liver_diagnosis
+  + depression, data = data_sub, family = binomial)
 nobs(agg_mod1)
 summary(agg_mod1)
 
-# model with recurrence of disease, evidence of rejection/graft dysfunction, 
-# evidence of any fibrosis, renal failure, corticosteroid
-# number of observations = 226 
-# p<226/15; can have 15 predictors
-agg_mod2 <- glm(Sleep_Disturbance_flag ~ gender + age + bmi + time_from_transplant + liver_diagnosis 
-            + depression + recurrence_of_disease + rejection_graft_dysfunction 
-            + any_fibrosis + renal_failure + corticoid, data = data_sub, family = binomial)
-nobs(agg_mod2)
+# Results show liver_diagnosisAlcohol as the only statistically significant predictor
+# in this model (p < 0.05)
+results_table(agg_mod1, "Aggregate Sleep Disturbance Logistic Regression - Model 1")
 
-# alpha = 0.05
-# evidence of rejection/graft dysfunction, evidence of any fibrosis, renal failure, 
-# corticosteroid are all p> 0.05
-# BMI has p<0.05 in both models, mod1 had p<0.05 for liver_diagnosisAlcohol as well
-# see which model is a better fit
+
+# Model fit with predictors identified in the literature + additional predictors
+agg_mod2 <- glm(Sleep_Disturbance_flag ~ gender + age + bmi + time_from_transplant + liver_diagnosis
+  + depression + recurrence_of_disease + rejection_graft_dysfunction
+  + any_fibrosis + renal_failure + corticoid, data = data_sub, family = binomial)
+nobs(agg_mod2)
 summary(agg_mod2)
 
-# likelihood ratio tests
-# Null hypothesis: the larger model (mod2) does not fit the data better compared to the smaller model (mod1)
-# Alternative hypothesis: the larger model (mod2) fits the data better compared to the smaller model (mod1)
-# Alpha = 0.05
-# Results: Model 1 has a deviance of 271.1 while Model 2 has deviance of 262.85.
-# p-value = 0.1429. Since p-value>0.05, we fail to reject the null
-# hypothesis. There is evidence to suggest that the larger model (mod2) does not fit the data better compared to 
-# the smaller model (mod1)
+# Results show no statistically significant predictors in this model
+results_table(agg_mod2, "Aggregate Sleep Disturbance Logistic Regression - Model 2")
+
+# Likelihood Ratio Test and AIC both point to agg_mod1 (the smaller model) as the better fit
 anova(agg_mod2, agg_mod1, test = "Chisq")
+AIC(agg_mod1)
+AIC(agg_mod2)
 
-# Likelihood ratio test suggests that agg_mod1 fits the data best
+# All adjusted GVIF values <2, no concern of multicollinearity in this model
+# suggests model stability
+vif(agg_mod1)
 
-# Identified predictors for sleep disturbance based on the data: BMI, liver_diagnosisAlcohol
-# The obtained value from the chosen model (mod1) 
-# indicates that there is an increase of 0.098511 in the estimate 
-# of the log of odds ratio for the “Sleep Disturbance” outcome, for each unit increase of BMI
+# Based on these results, identified predictors for Sleep_Disturbance_flag: liver_diagnosisAlcohol
+
+# Predictors of Sleep Disturbance Identified (across all best fit models): liver_diagnosisAlcohol,
+# liver_diagnosisPSC/PBC/AHA, corticoidYes, depressionYes, and bmi
